@@ -78,8 +78,10 @@ if __name__ == '__main__':
                     'store_trailing_12_month_avg_inventory',
                     'store_number_of_skus']
     target_columns = ['store_id', 'sku_id',
-                    'median_income', 'median_age',
-                    'population', 'unemployment_rate',
+                    'sku_color', 'sku_material',
+                    'sku_description', 'median_income',
+                    'median_age', 'population',
+                    'unemployment_rate',
                     'store_trailing_24_month_sales', 
                     'store_trailing_24_month_units_sold',
                     'store_trailing_12_month_avg_inventory',
