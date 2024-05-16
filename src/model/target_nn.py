@@ -2,12 +2,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
-import pandas as pd
 import numpy as np
 from transformers import BertModel, BertTokenizer
-from tqdm import tqdm
 
 # Define the neural network for non-text features
 class NonTextNN(nn.Module):
@@ -71,7 +68,7 @@ class TargetModel:
         # Generate a random id for the model
         self.model_id = np.random.randint(0, 1000000)
 
-    def train(self, X_train_non_text, input_ids_train, attention_mask_train, y_train, X_val_non_text=None, input_ids_val=None, attention_mask_val=None, y_val=None, num_epochs=100, batch_size=32):
+    def train(self, X_train_non_text, input_ids_train, attention_mask_train, y_train, X_val_non_text=None, input_ids_val=None, attention_mask_val=None, y_val=None, num_epochs=100, batch_size=10):
         train_dataset = torch.utils.data.TensorDataset(X_train_non_text, input_ids_train, attention_mask_train, y_train)
         train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
 
@@ -118,7 +115,7 @@ class TargetModel:
                 loss = epoch_loss / len(train_loader)
                 if loss < best_loss:
                     best_loss = loss
-                    torch.save(self.model.state_dict(), 'src/model/serialized_models/best_model.pth')
+                    torch.save(self.model.state_dict(), 'src/model/serialized_models/best_target_model.pth')
                 else:
                     epochs_no_improve += 1
                     if epochs_no_improve >= self.patience:
@@ -157,7 +154,7 @@ class TargetModel:
             residuals = y - predictions
         return residuals
 
-    def load_model(self, path='src/model/serialized_models/best_model.pth'):
+    def load_model(self, path='src/model/serialized_models/best_target_model.pth'):
         self.model.load_state_dict(torch.load(path))
         self.model_trained = True
 
@@ -166,7 +163,6 @@ def prepare_bert_input(texts, tokenizer, max_length=128):
     return inputs['input_ids'], inputs['attention_mask']
 
 if __name__ == '__main__':
-    from sklearn.model_selection import train_test_split
     from src.data.data_pipeline import read_data, target_data_processing
     dir = 'src/data/raw/store_sku_data.csv'
     target_columns = ['store_id', 'sku_id',
