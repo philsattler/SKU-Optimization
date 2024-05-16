@@ -115,7 +115,7 @@ class TargetModel:
                 loss = epoch_loss / len(train_loader)
                 if loss < best_loss:
                     best_loss = loss
-                    torch.save(self.model.state_dict(), 'src/model/serialized_models/best_target_model.pth')
+                    torch.save(self.model.state_dict(), f'src/model/serialized_models/best_target_model_{self.model_id}.pth')
                 else:
                     epochs_no_improve += 1
                     if epochs_no_improve >= self.patience:
@@ -215,9 +215,6 @@ if __name__ == '__main__':
     # Initialize and train the model
     target_model = TargetModel(non_text_input_dim=X_non_text.shape[1], bert_model_name=bert_model_name, output_dim=1)
     target_model.train(X_non_text, input_ids, attention_mask, y, num_epochs=100, batch_size=15)
-
-    # Load the best model
-    target_model.load_model()
 
     # Perform inference
     predictions = target_model.infer(X_non_text, input_ids, attention_mask)
