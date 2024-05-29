@@ -4,6 +4,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
 from transformers import BertTokenizer
 import numpy as np
+import os
 
 
 from src.model.treatment_nn import TreatmentModel
@@ -188,6 +189,9 @@ class CausalInference():
         return final_data
     
     def optim_and_control_data(self, confidence_threshold=0.0):
+        # create src/data/outputs directory if it does not exist
+        if not os.path.exists('src/data/outputs'):
+            os.makedirs('src/data/outputs')
         treatment_data = self.infer_treatment_model()
         target_data = self.infer_target_model()
 

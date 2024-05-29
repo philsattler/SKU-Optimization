@@ -5,6 +5,7 @@ from torch.optim.lr_scheduler import StepLR
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 import numpy as np
 from transformers import BertModel, BertTokenizer
+import os
 
 # Define the neural network for non-text features
 class NonTextNN(nn.Module):
@@ -104,6 +105,9 @@ class TargetModel:
                 if val_loss < best_loss:
                     best_loss = val_loss
                     epochs_no_improve = 0
+                    #create directory if it does not exist
+                    if not os.path.exists('src/model/serialized_models'):
+                        os.makedirs('src/model/serialized_models')
                     torch.save(self.model.state_dict(), f'src/model/serialized_models/target_model_{self.model_id}.pth')
                 else:
                     epochs_no_improve += 1
@@ -115,6 +119,9 @@ class TargetModel:
                 loss = epoch_loss / len(train_loader)
                 if loss < best_loss:
                     best_loss = loss
+                    #create directory if it does not exist
+                    if not os.path.exists('src/model/serialized_models'):
+                        os.makedirs('src/model/serialized_models')
                     torch.save(self.model.state_dict(), f'src/model/serialized_models/best_target_model_{self.model_id}.pth')
                 else:
                     epochs_no_improve += 1
