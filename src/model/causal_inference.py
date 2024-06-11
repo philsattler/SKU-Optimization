@@ -1,18 +1,15 @@
 import pandas as pd
 import torch
-from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import OneHotEncoder
-from transformers import BertTokenizer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
 import numpy as np
 import os
 
-
 from src.model.treatment_nn import TreatmentModel
-from src.model.target_nn import TargetModel, prepare_bert_input
+from src.model.target_nn import TargetModel
 from src.data.data_pipeline import read_data, treatment_data_processing, target_data_processing
 
 class CausalInference():
-    def __init__(self, data_dir:str):
+    def __init__(self, data_dir: str):
         self.data_dir = data_dir
 
     def get_treatment_data(self):
@@ -25,7 +22,7 @@ class CausalInference():
                              'store_number_of_skus']
         data = read_data(self.data_dir)
         final_data = treatment_data_processing(data, treatment_columns)
-        #find list of all columns that have 'SKU' in them
+        # Find list of all columns that have 'SKU' in them
         sku_columns = [col for col in final_data.columns if 'SKU' in col]
 
         return final_data, sku_columns
@@ -64,22 +61,15 @@ class CausalInference():
     
         # Separate features
         categorical_features = ['sku_color', 'sku_material']
-        text_features = ['sku_description']
-        numeric_features = final_data.drop(columns=categorical_features + text_features + ['store_id', 'sku_id', target_column]).columns.tolist()
+        numeric_features = final_data.drop(columns=categorical_features + ['store_id', 'sku_id', 'sku_description', target_column]).columns.tolist()
 
         # One-Hot Encoding for categorical features
-        encoder = OneHotEncoder(handle_unknown='ignore',sparse_output=False)
+        encoder = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
         encoded_categorical_features = encoder.fit_transform(final_data[categorical_features])
 
         # Ensure encoded categorical features are 2D
         if len(encoded_categorical_features.shape) == 1:
             encoded_categorical_features = encoded_categorical_features.reshape(-1, 1)
-
-        # Load pre-trained BERT model and tokenizer
-        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-
-        # Prepare BERT input
-        input_ids, attention_mask = prepare_bert_input(final_data['sku_description'], tokenizer)
 
         # Standardize numeric features
         self.target_scaler = StandardScaler()
@@ -92,7 +82,7 @@ class CausalInference():
         X_non_text = torch.tensor(non_text_features, dtype=torch.float32)
         y = torch.tensor(final_data[target_column].values, dtype=torch.float32).unsqueeze(1)  # Ensure y is 2D with shape (n_samples, 1)
 
-        return X_non_text, input_ids, attention_mask, y
+        return X_non_text, y
     
     def train_treatment_model(self):
         X, y = self.process_treatment_data()
@@ -101,10 +91,9 @@ class CausalInference():
         return treatment_model
     
     def train_target_model(self):
-        bert_model_name = 'bert-base-uncased'
-        X_non_text, input_ids, attention_mask, y = self.process_target_data()
-        target_model = TargetModel(non_text_input_dim=X_non_text.shape[1], bert_model_name=bert_model_name, output_dim=1)
-        target_model.train(X_non_text, input_ids, attention_mask, y, num_epochs=100, batch_size=15)
+        X_non_text, y = self.process_target_data()
+        target_model = TargetModel(non_text_input_dim=X_non_text.shape[1], output_dim=1)
+        target_model.train(X_non_text, y, num_epochs=100, batch_size=15)
         return target_model
     
     def assemble_target_inferential_data(self):
@@ -134,22 +123,15 @@ class CausalInference():
         final_data = self.assemble_target_inferential_data()
         # Separate features
         categorical_features = ['sku_color', 'sku_material']
-        text_features = ['sku_description']
-        numeric_features = final_data.drop(columns=categorical_features + text_features + ['store_id', 'sku_id']).columns.tolist()
+        numeric_features = final_data.drop(columns=categorical_features + ['store_id', 'sku_id', 'sku_description']).columns.tolist()
 
         # One-Hot Encoding for categorical features
-        encoder = OneHotEncoder(handle_unknown='ignore',sparse_output=False)
+        encoder = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
         encoded_categorical_features = encoder.fit_transform(final_data[categorical_features])
 
         # Ensure encoded categorical features are 2D
         if len(encoded_categorical_features.shape) == 1:
             encoded_categorical_features = encoded_categorical_features.reshape(-1, 1)
-
-        # Load pre-trained BERT model and tokenizer
-        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-
-        # Prepare BERT input
-        input_ids, attention_mask = prepare_bert_input(final_data['sku_description'], tokenizer)
 
         # Standardize numeric features
         scaled_numeric_features = self.target_scaler.transform(final_data[numeric_features])
@@ -160,7 +142,7 @@ class CausalInference():
         # Convert to tensor
         X_non_text = torch.tensor(non_text_features, dtype=torch.float32)
 
-        predictions = target_model.infer(X_non_text, input_ids, attention_mask)
+        predictions = target_model.infer(X_non_text)
 
         #concatenate the predictions with the final_data
         final_data['predicted_gross_profit'] = predictions.numpy()
